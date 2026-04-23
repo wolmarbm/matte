@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import PageContainer from '../components/ui/PageContainer'
 import PizzaBoard from '../components/PizzaBoard'
 import PizzaOptionGrid from '../components/PizzaOptionGrid'
 import { QUESTIONS } from '../data/questions'
 import { computeAccuracy } from '../utils/scoring'
 import { loadStudentName, saveSession } from '../utils/storage'
+
+const MAX_ATTEMPTS = 3
 
 function GamePage() {
   const navigate = useNavigate()
@@ -21,8 +24,11 @@ function GamePage() {
   const [feedback, setFeedback] = useState('')
   const [isCorrect, setIsCorrect] = useState(null)
   const [attempts, setAttempts] = useState(0)
+  const [wrongAttempts, setWrongAttempts] = useState(0)
   const [hintUsed, setHintUsed] = useState(false)
   const [showHint, setShowHint] = useState(false)
+
+  const outOfAttempts = wrongAttempts >= MAX_ATTEMPTS && isCorrect !== true
 
   // One entry per question id — overwrites prevent duplicate results
   const resultsRef = useRef({})
@@ -32,6 +38,10 @@ function GamePage() {
   const prefilledSlices =
     questionType === 'complete' ? currentQuestion.prefilledSlices || [] : []
   const isLastQuestion = currentQuestionIndex === QUESTIONS.length - 1
+
+  const progressPct = Math.round(
+    ((currentQuestionIndex + 1) / QUESTIONS.length) * 100,
+  )
 
   const getHintText = () => {
     if (questionType === 'complete') {
@@ -72,6 +82,7 @@ function GamePage() {
     setFeedback('')
     setIsCorrect(null)
     setAttempts(0)
+    setWrongAttempts(0)
     setHintUsed(false)
     setShowHint(false)
   }
@@ -96,7 +107,17 @@ function GamePage() {
     return selectedSlices.length === currentQuestion.numerator
   }
 
-  const buildFeedback = (correct) => {
+  const buildFeedback = (correct, nextWrongAttempts) => {
+    if (!correct && nextWrongAttempts >= MAX_ATTEMPTS) {
+      if (questionType === 'equivalent') {
+        return 'Out of attempts. No worries — tap Next Question to keep going.'
+      }
+      if (questionType === 'complete') {
+        return `Out of attempts. The pizza needed ${currentQuestion.numerator} more slice(s) to be whole. Tap Next Question to keep going.`
+      }
+      return `Out of attempts. The answer was ${currentQuestion.numerator}/${currentQuestion.denominator}. Tap Next Question to keep going.`
+    }
+
     if (questionType === 'equivalent') {
       if (correct) {
         return `Correct — that pizza shows the same amount as ${currentQuestion.targetFraction}.`
@@ -122,11 +143,15 @@ function GamePage() {
   }
 
   const handleCheckAnswer = () => {
-    setAttempts((prev) => prev + 1)
+    if (outOfAttempts || isCorrect === true) return
 
     const correct = computeCorrect()
+    const nextWrongAttempts = correct ? wrongAttempts : wrongAttempts + 1
 
-    setFeedback(buildFeedback(correct))
+    setAttempts((prev) => prev + 1)
+    if (!correct) setWrongAttempts(nextWrongAttempts)
+
+    setFeedback(buildFeedback(correct, nextWrongAttempts))
     setIsCorrect(correct)
   }
 
@@ -194,10 +219,23 @@ function GamePage() {
   }
 
   return (
-    <main className="page">
+    <PageContainer variant="student">
       <h1 className="page__title">Student Game</h1>
 
-      <p className="progress" style={{ marginTop: 4, opacity: 0.8 }}>
+      <div
+        className="progress-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={QUESTIONS.length}
+        aria-valuenow={currentQuestionIndex + 1}
+        aria-label={`Question ${currentQuestionIndex + 1} of ${QUESTIONS.length}`}
+      >
+        <div
+          className="progress-bar__fill"
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
+      <p className="progress-bar__label">
         Question {currentQuestionIndex + 1} of {QUESTIONS.length}
       </p>
 
@@ -218,15 +256,39 @@ function GamePage() {
         />
       )}
 
-      <p className="attempts" style={{ marginTop: 12 }}>
-        Attempts: {attempts}
-      </p>
+      <div
+        className="attempt-tracker"
+        role="group"
+        aria-label={`Attempts remaining: ${Math.max(0, MAX_ATTEMPTS - wrongAttempts)} of ${MAX_ATTEMPTS}`}
+      >
+        <span className="attempt-tracker__label">Lives</span>
+        <div className="attempt-tracker__crosses">
+          {Array.from({ length: MAX_ATTEMPTS }).map((_, i) => {
+            const filled = i < wrongAttempts
+            return (
+              <span
+                key={i}
+                className={
+                  'attempt-cross' + (filled ? ' attempt-cross--filled' : '')
+                }
+                aria-hidden="true"
+              >
+                <svg viewBox="0 0 24 24" className="attempt-cross__icon">
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                </svg>
+              </span>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="actions" style={{ marginTop: 16 }}>
         <button
           type="button"
           className="btn btn--primary"
           onClick={handleCheckAnswer}
+          disabled={outOfAttempts || isCorrect === true}
         >
           Check Answer
         </button>
@@ -234,6 +296,7 @@ function GamePage() {
           type="button"
           className="btn btn--secondary"
           onClick={handleHint}
+          disabled={outOfAttempts}
         >
           Hint
         </button>
@@ -241,6 +304,7 @@ function GamePage() {
           type="button"
           className="btn btn--secondary"
           onClick={handleReset}
+          disabled={outOfAttempts}
         >
           Reset
         </button>
@@ -248,12 +312,10 @@ function GamePage() {
 
       {feedback && (
         <p
-          className="feedback"
-          style={{
-            marginTop: 16,
-            fontWeight: 600,
-            color: isCorrect ? 'green' : 'crimson',
-          }}
+          className={
+            'feedback ' +
+            (isCorrect ? 'feedback--correct' : 'feedback--incorrect')
+          }
           role="status"
           aria-live="polite"
         >
@@ -261,23 +323,7 @@ function GamePage() {
         </p>
       )}
 
-      {isCorrect === true && (
-        <p
-          className="success-note"
-          style={{ marginTop: 8, color: 'green' }}
-        >
-          Nice job — you got it.
-        </p>
-      )}
-
-      {showHint && (
-        <p
-          className="hint"
-          style={{ marginTop: 12, fontStyle: 'italic' }}
-        >
-          {getHintText()}
-        </p>
-      )}
+      {showHint && <p className="hint">{getHintText()}</p>}
 
       {hintUsed && !showHint && (
         <p className="hint-used" style={{ marginTop: 8, fontSize: 12 }}>
@@ -302,7 +348,7 @@ function GamePage() {
           Back to Home
         </Link>
       </div>
-    </main>
+    </PageContainer>
   )
 }
 

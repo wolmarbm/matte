@@ -1,5 +1,9 @@
 import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import PageContainer from '../components/ui/PageContainer'
+import SummaryCard from '../components/ui/SummaryCard'
+import SectionCard from '../components/ui/SectionCard'
+import { getConceptLabel } from '../utils/analytics'
 import { getSessionAccuracy } from '../utils/scoring'
 import { loadLatestSession } from '../utils/storage'
 
@@ -12,6 +16,13 @@ function formatPlayedAt(iso) {
   }
 }
 
+function getEncouragement(accuracy) {
+  if (!Number.isFinite(accuracy)) return 'Nice work — keep practicing fractions.'
+  if (accuracy >= 80) return 'Great job! You really know your fractions.'
+  if (accuracy >= 50) return 'Nice work — keep practicing fractions.'
+  return "Keep going — you'll get it with a little more practice."
+}
+
 function ResultsPage() {
   const location = useLocation()
   const session = useMemo(() => {
@@ -20,7 +31,7 @@ function ResultsPage() {
 
   if (!session) {
     return (
-      <main className="page">
+      <PageContainer variant="student">
         <h1 className="page__title">Session Results</h1>
         <p className="page__subtitle">
           No completed sessions yet. Play a round to see your results here.
@@ -33,7 +44,7 @@ function ResultsPage() {
             Play Now
           </Link>
         </div>
-      </main>
+      </PageContainer>
     )
   }
 
@@ -47,77 +58,67 @@ function ResultsPage() {
   const accuracy = getSessionAccuracy(session)
 
   return (
-    <main className="page">
+    <PageContainer variant="student">
       <h1 className="page__title">Session Results</h1>
+      <p className="page__subtitle">Here is how you did this round.</p>
 
-      <section
-        className="summary-card"
-        style={{
-          marginTop: 16,
-          padding: 16,
-          border: '1px solid #ddd',
-          borderRadius: 8,
-        }}
-        aria-label="Student summary"
-      >
-        <h2 style={{ marginTop: 0 }}>{studentName || 'Student'}</h2>
-        <p style={{ margin: '4px 0', opacity: 0.8 }}>
-          Played: {formatPlayedAt(playedAt)}
-        </p>
-        <p style={{ margin: '4px 0', fontWeight: 600 }}>
-          Score: {score} / {totalQuestions}
-        </p>
-        <p style={{ margin: '4px 0' }}>Accuracy: {accuracy}%</p>
+      <section className="summary-grid" aria-label="Session summary">
+        <SummaryCard label="Student" value={studentName || 'Student'} />
+        <SummaryCard
+          label="Score"
+          value={`${score} / ${totalQuestions}`}
+          hint={`${totalQuestions} question${totalQuestions === 1 ? '' : 's'} total`}
+        />
+        <SummaryCard label="Accuracy" value={`${accuracy}%`} />
+        <SummaryCard label="Played" value={formatPlayedAt(playedAt)} />
       </section>
 
-      <section
-        className="breakdown"
-        style={{ marginTop: 24 }}
-        aria-label="Question breakdown"
-      >
-        <h2>Question breakdown</h2>
+      <p className="encouragement">{getEncouragement(accuracy)}</p>
+
+      <SectionCard title="Question breakdown" ariaLabel="Question breakdown">
         {questions.length === 0 ? (
           <p>No question details available.</p>
         ) : (
-          <ol style={{ paddingLeft: 20 }}>
+          <ol style={{ paddingLeft: 20, margin: 0 }}>
             {questions.map((q, index) => (
               <li
                 key={q.id || index}
-                style={{
-                  marginBottom: 12,
-                  padding: 12,
-                  border: '1px solid #eee',
-                  borderRadius: 6,
-                }}
+                className="question-card"
+                style={{ listStylePosition: 'inside' }}
               >
-                <p style={{ margin: '0 0 6px 0', fontWeight: 600 }}>
-                  {q.prompt}
-                </p>
-                <p style={{ margin: '2px 0' }}>
+                <p className="question-card__prompt">{q.prompt}</p>
+                <div className="badge-row">
+                  <span
+                    className={
+                      'badge ' +
+                      (q.correct ? 'badge--correct' : 'badge--incorrect')
+                    }
+                  >
+                    {q.correct ? 'Correct' : 'Incorrect'}
+                  </span>
+                  {q.conceptTag ? (
+                    <span className="badge badge--concept">
+                      {getConceptLabel(q.conceptTag)}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="question-card__row">
                   Target: <strong>{q.targetFraction}</strong>
                 </p>
-                <p style={{ margin: '2px 0' }}>
+                <p className="question-card__row">
                   Your answer: <strong>{q.selectedFraction}</strong>
                 </p>
-                <p
-                  style={{
-                    margin: '2px 0',
-                    color: q.correct ? 'green' : 'crimson',
-                    fontWeight: 600,
-                  }}
-                >
-                  {q.correct ? 'Correct' : 'Incorrect'}
-                </p>
-                <p style={{ margin: '2px 0', fontSize: 14 }}>
-                  Attempts: {q.attempts} · Hint used: {q.hintUsed ? 'Yes' : 'No'}
+                <p className="question-card__meta">
+                  Attempts: {q.attempts} · Hint used:{' '}
+                  {q.hintUsed ? 'Yes' : 'No'}
                 </p>
               </li>
             ))}
           </ol>
         )}
-      </section>
+      </SectionCard>
 
-      <div className="actions" style={{ marginTop: 16 }}>
+      <div className="actions">
         <Link to="/play" className="btn btn--primary">
           Play Again
         </Link>
@@ -125,7 +126,7 @@ function ResultsPage() {
           Back to Home
         </Link>
       </div>
-    </main>
+    </PageContainer>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import PageContainer from '../components/ui/PageContainer'
 import { loadStudentName, saveStudentName } from '../utils/storage'
 
 function HomePage() {
@@ -19,7 +20,7 @@ function HomePage() {
   }
 
   return (
-    <main className="page page--home">
+    <PageContainer variant="student">
       <h1 className="page__title">Pizza Fractions</h1>
       <p className="page__subtitle">Build pizzas to learn fractions.</p>
 
@@ -45,7 +46,7 @@ function HomePage() {
           Teacher View
         </Link>
       </div>
-    </main>
+    </PageContainer>
   )
 }
 

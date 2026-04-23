@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import PageContainer from '../components/ui/PageContainer'
+import SummaryCard from '../components/ui/SummaryCard'
+import SectionCard from '../components/ui/SectionCard'
 import { getSessionAccuracy } from '../utils/scoring'
 import { clearSessions, loadSessions } from '../utils/storage'
 import {
@@ -11,6 +14,12 @@ import {
 } from '../utils/analytics'
 
 const TEACHER_PASSWORD = 'magma'
+
+const MISCONCEPTION_HINTS = {
+  'parts-of-whole': 'Needs support with numerator/denominator meaning.',
+  'equivalent-fractions': 'Missed equivalent fraction relationship.',
+  'compare-fractions': 'Needs practice comparing fraction sizes.',
+}
 
 function formatPlayedAt(iso) {
   if (!iso) return ''
@@ -56,7 +65,7 @@ function TeacherPage() {
   )
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    if (e && typeof e.preventDefault === 'function') e.preventDefault()
     if (password === TEACHER_PASSWORD) {
       setIsAuthenticated(true)
       setError('')
@@ -81,7 +90,7 @@ function TeacherPage() {
 
   if (!isAuthenticated) {
     return (
-      <main className="page">
+      <PageContainer variant="student">
         <h1 className="page__title">Teacher Access</h1>
         <p className="page__subtitle">
           Enter the teacher password to continue.
@@ -115,252 +124,71 @@ function TeacherPage() {
             Unlock
           </button>
         </div>
-      </main>
+      </PageContainer>
     )
   }
 
   return (
-    <main className="page" style={{ maxWidth: 720, textAlign: 'left' }}>
-      <h1 className="page__title" style={{ textAlign: 'left' }}>
-        Teacher Dashboard
-      </h1>
-      <p className="page__subtitle" style={{ textAlign: 'left' }}>
-        Review saved student sessions.
-      </p>
+    <PageContainer variant="teacher">
+      <header className="page-header">
+        <h1 className="page__title">Teacher Dashboard</h1>
+        <p className="page__subtitle">Review saved student sessions.</p>
+      </header>
 
-      <section
-        aria-label="Dashboard summary"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 12,
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            padding: 14,
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#fafafa',
-          }}
-        >
-          <div style={{ fontSize: 13, color: '#555' }}>Total Sessions</div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: '#111' }}>
-            {totalSessions}
-          </div>
-        </div>
-        <div
-          style={{
-            padding: 14,
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#fafafa',
-          }}
-        >
-          <div style={{ fontSize: 13, color: '#555' }}>Average Accuracy</div>
-          <div style={{ fontSize: 22, fontWeight: 600, color: '#111' }}>
-            {avgAccuracy === null ? '—' : `${avgAccuracy}%`}
-          </div>
-        </div>
-        <div
-          style={{
-            padding: 14,
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#fafafa',
-          }}
-        >
-          <div style={{ fontSize: 13, color: '#555' }}>Most Missed Concept</div>
-          {mostMissed ? (
-            <>
-              <div
-                style={{ fontSize: 18, fontWeight: 600, color: '#111' }}
-              >
-                {mostMissed.label}
-              </div>
-              <div style={{ fontSize: 13, color: '#555', marginTop: 2 }}>
-                Accuracy: {mostMissed.accuracy}%
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 15, color: '#111', marginTop: 2 }}>
-              Not enough data yet
-            </div>
-          )}
-        </div>
-        <div
-          style={{
-            padding: 14,
-            border: '1px solid #e5e7eb',
-            borderRadius: 8,
-            background: '#fafafa',
-          }}
-        >
-          <div style={{ fontSize: 13, color: '#555' }}>Common Mistake</div>
-          <div
-            style={{
-              fontSize: 15,
-              color: '#111',
-              marginTop: 2,
-              lineHeight: 1.35,
-            }}
-          >
-            {commonMistake}
-          </div>
-        </div>
+      <section className="summary-grid" aria-label="Dashboard summary">
+        <SummaryCard label="Total Sessions" value={totalSessions} />
+        <SummaryCard
+          label="Average Accuracy"
+          value={avgAccuracy === null ? '—' : `${avgAccuracy}%`}
+        />
+        <SummaryCard
+          label="Most Missed Concept"
+          value={mostMissed ? mostMissed.label : 'Not enough data yet'}
+          hint={mostMissed ? `Accuracy: ${mostMissed.accuracy}%` : undefined}
+        />
+        <SummaryCard label="Common Mistake" value={commonMistake} />
       </section>
 
       {conceptBreakdown.length > 0 && (
-        <section aria-label="Concept breakdown" style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 12px 0' }}>
-            Concept Breakdown
-          </h2>
-          <div
-            style={{
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              background: '#fff',
-              overflow: 'hidden',
-            }}
-          >
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                fontSize: 14,
-              }}
-            >
-              <thead>
-                <tr style={{ background: '#f3f4f6' }}>
-                  <th
-                    style={{
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                      color: '#111',
-                      fontWeight: 600,
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  >
-                    Concept
-                  </th>
-                  <th
-                    style={{
-                      textAlign: 'right',
-                      padding: '8px 12px',
-                      color: '#111',
-                      fontWeight: 600,
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  >
-                    Correct
-                  </th>
-                  <th
-                    style={{
-                      textAlign: 'right',
-                      padding: '8px 12px',
-                      color: '#111',
-                      fontWeight: 600,
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  >
-                    Incorrect
-                  </th>
-                  <th
-                    style={{
-                      textAlign: 'right',
-                      padding: '8px 12px',
-                      color: '#111',
-                      fontWeight: 600,
-                      borderBottom: '1px solid #e5e7eb',
-                    }}
-                  >
-                    Accuracy
-                  </th>
+        <SectionCard
+          title="Concept Breakdown"
+          ariaLabel="Concept breakdown"
+        >
+          <table className="concept-table">
+            <thead>
+              <tr>
+                <th>Concept</th>
+                <th className="num">Correct</th>
+                <th className="num">Incorrect</th>
+                <th className="num">Accuracy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {conceptBreakdown.map((row) => (
+                <tr key={row.conceptTag}>
+                  <td>{row.label}</td>
+                  <td className="num">{row.correct}</td>
+                  <td className="num">{row.incorrect}</td>
+                  <td className="num" style={{ fontWeight: 600 }}>
+                    {row.accuracy}%
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {conceptBreakdown.map((row, index) => (
-                  <tr
-                    key={row.conceptTag}
-                    style={{
-                      background: index % 2 === 0 ? '#fff' : '#fafafa',
-                    }}
-                  >
-                    <td style={{ padding: '8px 12px', color: '#111' }}>
-                      {row.label}
-                    </td>
-                    <td
-                      style={{
-                        padding: '8px 12px',
-                        textAlign: 'right',
-                        color: '#111',
-                      }}
-                    >
-                      {row.correct}
-                    </td>
-                    <td
-                      style={{
-                        padding: '8px 12px',
-                        textAlign: 'right',
-                        color: '#111',
-                      }}
-                    >
-                      {row.incorrect}
-                    </td>
-                    <td
-                      style={{
-                        padding: '8px 12px',
-                        textAlign: 'right',
-                        color: '#111',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {row.accuracy}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
       )}
 
       {totalSessions === 0 ? (
-        <section
-          aria-label="Empty state"
-          style={{
-            padding: 24,
-            border: '1px dashed #d1d5db',
-            borderRadius: 8,
-            background: '#fff',
-            textAlign: 'center',
-            color: '#555',
-            marginBottom: 24,
-          }}
-        >
-          <p style={{ margin: '0 0 6px 0', fontWeight: 600, color: '#111' }}>
-            No student sessions yet.
-          </p>
+        <section className="empty-state" aria-label="Empty state">
+          <p className="empty-state__title">No student sessions yet.</p>
           <p style={{ margin: 0 }}>
             Play a game first to generate teacher review data.
           </p>
         </section>
       ) : (
-        <section aria-label="Session list">
-          <h2 style={{ fontSize: '1.1rem', margin: '0 0 12px 0' }}>
-            Recent Sessions
-          </h2>
-          <ul
-            style={{
-              listStyle: 'none',
-              padding: 0,
-              margin: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
+        <SectionCard title="Recent Sessions" ariaLabel="Session list">
+          <ul className="session-list">
             {sortedSessions.map((session, index) => {
               const id = getSessionId(session, index)
               const isOpen = selectedSessionId === id
@@ -369,60 +197,30 @@ function TeacherPage() {
                 : []
 
               return (
-                <li
-                  key={id}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    background: '#fff',
-                    padding: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 12,
-                      flexWrap: 'wrap',
-                    }}
-                  >
+                <li key={id} className="session-item">
+                  <div className="session-item__header">
                     <div style={{ minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontSize: '1rem',
-                          fontWeight: 600,
-                          color: '#111',
-                        }}
-                      >
+                      <div className="session-item__name">
                         {session.studentName || 'Unnamed student'}
                       </div>
-                      <div style={{ fontSize: 13, color: '#555' }}>
+                      <div className="session-item__meta">
                         {formatPlayedAt(session.playedAt)}
                       </div>
                     </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 16,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div style={{ fontSize: 14, color: '#111' }}>
+                    <div className="session-item__stats">
+                      <div>
                         Score:{' '}
                         <strong>
                           {session.score} / {session.totalQuestions}
                         </strong>
                       </div>
-                      <div style={{ fontSize: 14, color: '#111' }}>
+                      <div>
                         Accuracy: <strong>{session.accuracy}%</strong>
                       </div>
                       <button
                         type="button"
-                        className="btn btn--primary"
+                        className="btn btn--primary btn--small"
                         onClick={() => handleToggleDetails(id)}
-                        style={{ padding: '6px 12px', fontSize: 14 }}
                       >
                         {isOpen ? 'Hide Details' : 'View Details'}
                       </button>
@@ -430,41 +228,26 @@ function TeacherPage() {
                   </div>
 
                   {isOpen && (
-                    <div
-                      style={{
-                        marginTop: 14,
-                        paddingTop: 14,
-                        borderTop: '1px solid #e5e7eb',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr',
-                          gap: 8,
-                          marginBottom: 12,
-                          fontSize: 14,
-                          color: '#333',
-                        }}
-                      >
+                    <div className="session-item__details">
+                      <div className="session-detail-grid">
                         <div>
-                          <span style={{ color: '#555' }}>Student: </span>
+                          <span style={{ color: '#64748b' }}>Student: </span>
                           <strong>
                             {session.studentName || 'Unnamed student'}
                           </strong>
                         </div>
                         <div>
-                          <span style={{ color: '#555' }}>Played: </span>
+                          <span style={{ color: '#64748b' }}>Played: </span>
                           <strong>{formatPlayedAt(session.playedAt)}</strong>
                         </div>
                         <div>
-                          <span style={{ color: '#555' }}>Score: </span>
+                          <span style={{ color: '#64748b' }}>Score: </span>
                           <strong>
                             {session.score} / {session.totalQuestions}
                           </strong>
                         </div>
                         <div>
-                          <span style={{ color: '#555' }}>Accuracy: </span>
+                          <span style={{ color: '#64748b' }}>Accuracy: </span>
                           <strong>{session.accuracy}%</strong>
                         </div>
                       </div>
@@ -473,78 +256,76 @@ function TeacherPage() {
                         style={{
                           fontSize: '1rem',
                           margin: '0 0 8px 0',
-                          color: '#111',
+                          color: '#1f2937',
                         }}
                       >
                         Question breakdown
                       </h3>
                       {questions.length === 0 ? (
-                        <p style={{ margin: 0, color: '#555' }}>
+                        <p style={{ margin: 0, color: '#64748b' }}>
                           No question details available.
                         </p>
                       ) : (
                         <ol style={{ paddingLeft: 20, margin: 0 }}>
-                          {questions.map((q, qIndex) => (
-                            <li
-                              key={q.id || qIndex}
-                              style={{
-                                marginBottom: 10,
-                                padding: 10,
-                                border: '1px solid #eee',
-                                borderRadius: 6,
-                                background: '#fafafa',
-                              }}
-                            >
-                              <p
-                                style={{
-                                  margin: '0 0 6px 0',
-                                  fontWeight: 600,
-                                  color: '#111',
-                                }}
+                          {questions.map((q, qIndex) => {
+                            const conceptLabel = q.conceptTag
+                              ? getConceptLabel(q.conceptTag)
+                              : null
+                            const misconception =
+                              !q.correct && q.conceptTag
+                                ? MISCONCEPTION_HINTS[q.conceptTag]
+                                : null
+
+                            return (
+                              <li
+                                key={q.id || qIndex}
+                                className="question-card"
+                                style={{ background: '#fafafa' }}
                               >
-                                {q.prompt}
-                              </p>
-                              <p
-                                style={{
-                                  margin: '2px 0',
-                                  fontSize: 14,
-                                  color: '#333',
-                                }}
-                              >
-                                Target: <strong>{q.targetFraction}</strong>
-                              </p>
-                              <p
-                                style={{
-                                  margin: '2px 0',
-                                  fontSize: 14,
-                                  color: '#333',
-                                }}
-                              >
-                                Student answer:{' '}
-                                <strong>{q.selectedFraction ?? '—'}</strong>
-                              </p>
-                              <p
-                                style={{
-                                  margin: '2px 0',
-                                  fontSize: 14,
-                                  color: q.correct ? '#166534' : '#991b1b',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {q.correct ? 'Correct' : 'Incorrect'}
-                              </p>
-                              <p
-                                style={{
-                                  margin: '2px 0',
-                                  fontSize: 13,
-                                  color: '#555',
-                                }}
-                              >
-                                Attempts: {q.attempts ?? 0} · Hint used:{' '}
-                                {q.hintUsed ? 'Yes' : 'No'}
-                              </p>
-                            </li>
-                          ))}
+                                <p className="question-card__prompt">
+                                  {q.prompt}
+                                </p>
+                                <div className="badge-row">
+                                  <span
+                                    className={
+                                      'badge ' +
+                                      (q.correct
+                                        ? 'badge--correct'
+                                        : 'badge--incorrect')
+                                    }
+                                  >
+                                    {q.correct ? 'Correct' : 'Incorrect'}
+                                  </span>
+                                  {conceptLabel ? (
+                                    <span className="badge badge--concept">
+                                      {conceptLabel}
+                                    </span>
+                                  ) : null}
+                                  {!q.correct ? (
+                                    <span className="badge badge--needs-review">
+                                      Needs Review
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="question-card__row">
+                                  Target: <strong>{q.targetFraction}</strong>
+                                </p>
+                                <p className="question-card__row">
+                                  Student answer:{' '}
+                                  <strong>{q.selectedFraction ?? '—'}</strong>
+                                </p>
+                                <p className="question-card__meta">
+                                  Attempts: {q.attempts ?? 0} · Hint used:{' '}
+                                  {q.hintUsed ? 'Yes' : 'No'}
+                                </p>
+                                {misconception ? (
+                                  <p className="question-card__misconception">
+                                    {misconception}
+                                  </p>
+                                ) : null}
+                              </li>
+                            )
+                          })}
                         </ol>
                       )}
                     </div>
@@ -553,13 +334,10 @@ function TeacherPage() {
               )
             })}
           </ul>
-        </section>
+        </SectionCard>
       )}
 
-      <div
-        className="actions"
-        style={{ marginTop: 24, justifyContent: 'flex-start' }}
-      >
+      <div className="actions" style={{ marginTop: 24 }}>
         <Link to="/" className="btn btn--secondary">
           Back to Home
         </Link>
@@ -577,7 +355,7 @@ function TeacherPage() {
           </button>
         )}
       </div>
-    </main>
+    </PageContainer>
   )
 }
 
