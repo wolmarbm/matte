@@ -15,6 +15,7 @@ function App() {
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/teacher" element={<TeacherPage />} />
         </Routes>
+        <img className="magma-logo" src="/magma-logo.svg" alt="Magma Math" />
       </div>
     </BrowserRouter>
   )
