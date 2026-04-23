@@ -154,8 +154,82 @@
   background: #d85f42;
 }
 
+.slice--prefilled {
+  background: #8ab17d;
+  border-color: #5f7a52;
+  color: #fff;
+  cursor: default;
+  opacity: 0.95;
+}
+
+.slice--prefilled:hover {
+  background: #8ab17d;
+}
+
+.slice--prefilled:active {
+  transform: none;
+}
+
 .pizza-board__status {
   margin: 4px 0 0;
   color: #444;
   font-weight: 500;
+}
+
+/* PizzaOptionGrid — equivalent-question option cards */
+.option-grid {
+  margin: 16px auto 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.option-card {
+  background: #fff;
+  border: 2px solid #d1d5db;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease,
+    transform 0.05s ease;
+  font-family: inherit;
+}
+
+.option-card:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.option-card:active {
+  transform: scale(0.99);
+}
+
+.option-card--selected {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.option-card__pizza {
+  display: grid;
+  gap: 4px;
+  width: 112px;
+}
+
+.slice--mini {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  font-size: 0;
+  border-radius: 6px;
+  border-width: 1px;
+  cursor: inherit;
+  pointer-events: none;
+}
+
+.slice--mini:hover {
+  background: #fff8ec;
+}
+
+.slice--mini.slice--selected:hover {
+  background: #e76f51;
 }

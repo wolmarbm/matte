@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import PizzaBoard from '../components/PizzaBoard'
+import PizzaOptionGrid from '../components/PizzaOptionGrid'
 import { QUESTIONS } from '../data/questions'
 import { computeAccuracy } from '../utils/scoring'
 import { loadStudentName, saveSession } from '../utils/storage'
@@ -14,9 +15,9 @@ function GamePage() {
     'Student'
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-  const [score, setScore] = useState(0)
 
   const [selectedSlices, setSelectedSlices] = useState([])
+  const [selectedOptionId, setSelectedOptionId] = useState(null)
   const [feedback, setFeedback] = useState('')
   const [isCorrect, setIsCorrect] = useState(null)
   const [attempts, setAttempts] = useState(0)
@@ -27,12 +28,47 @@ function GamePage() {
   const resultsRef = useRef({})
 
   const currentQuestion = QUESTIONS[currentQuestionIndex]
-  const totalSlices = currentQuestion.denominator
+  const questionType = currentQuestion.type || 'build'
+  const prefilledSlices =
+    questionType === 'complete' ? currentQuestion.prefilledSlices || [] : []
   const isLastQuestion = currentQuestionIndex === QUESTIONS.length - 1
-  const hintText = `Hint: ${currentQuestion.numerator}/${currentQuestion.denominator} means ${currentQuestion.numerator} selected slices out of ${currentQuestion.denominator} total slices.`
+
+  const getHintText = () => {
+    if (questionType === 'complete') {
+      return 'Hint: Think about how many more slices are needed to make 1 whole pizza.'
+    }
+    if (questionType === 'equivalent') {
+      return 'Hint: Look for pizzas that show the same amount, even if they are divided into different numbers of slices.'
+    }
+    return `Hint: ${currentQuestion.numerator}/${currentQuestion.denominator} means ${currentQuestion.numerator} selected slices out of ${currentQuestion.denominator} total slices.`
+  }
+
+  const getSelectedOption = () => {
+    if (questionType !== 'equivalent') return null
+    if (!selectedOptionId) return null
+    const options = currentQuestion.options || []
+    return options.find((o) => o.id === selectedOptionId) || null
+  }
+
+  const getTargetFraction = () => {
+    if (questionType === 'equivalent') {
+      return currentQuestion.targetFraction || ''
+    }
+    return `${currentQuestion.numerator}/${currentQuestion.denominator}`
+  }
+
+  const getSelectedFraction = () => {
+    if (questionType === 'equivalent') {
+      const opt = getSelectedOption()
+      if (!opt) return '—'
+      return `${opt.numerator}/${opt.denominator}`
+    }
+    return `${selectedSlices.length}/${currentQuestion.denominator}`
+  }
 
   const resetQuestionState = () => {
     setSelectedSlices([])
+    setSelectedOptionId(null)
     setFeedback('')
     setIsCorrect(null)
     setAttempts(0)
@@ -41,6 +77,8 @@ function GamePage() {
   }
 
   const handleSliceToggle = (index) => {
+    // Defense in depth: never toggle a prefilled slice
+    if (prefilledSlices.includes(index)) return
     setSelectedSlices((prev) =>
       prev.includes(index)
         ? prev.filter((i) => i !== index)
@@ -48,25 +86,47 @@ function GamePage() {
     )
   }
 
+  const computeCorrect = () => {
+    if (questionType === 'equivalent') {
+      const opt = getSelectedOption()
+      return !!(opt && opt.isCorrect)
+    }
+    // build + complete both check that the student-added slice count
+    // matches the question's numerator (for complete, numerator = missing count).
+    return selectedSlices.length === currentQuestion.numerator
+  }
+
+  const buildFeedback = (correct) => {
+    if (questionType === 'equivalent') {
+      if (correct) {
+        return `Correct — that pizza shows the same amount as ${currentQuestion.targetFraction}.`
+      }
+      if (!selectedOptionId) {
+        return 'Pick an option before checking.'
+      }
+      return 'Not quite. Try another option.'
+    }
+
+    if (questionType === 'complete') {
+      if (correct) {
+        return `Correct — you added ${currentQuestion.numerator}/${currentQuestion.denominator} to complete the whole pizza.`
+      }
+      return `Not quite. You added ${selectedSlices.length} slice(s); the pizza needs ${currentQuestion.numerator} more to be whole.`
+    }
+
+    // build
+    if (correct) {
+      return `Correct — ${currentQuestion.numerator} out of ${currentQuestion.denominator} slices means ${currentQuestion.numerator}/${currentQuestion.denominator}.`
+    }
+    return `Not quite. You selected ${selectedSlices.length} out of ${currentQuestion.denominator} slices.`
+  }
+
   const handleCheckAnswer = () => {
-    const selectedCount = selectedSlices.length
     setAttempts((prev) => prev + 1)
 
-    const correct = selectedCount === currentQuestion.numerator
+    const correct = computeCorrect()
 
-    if (correct && isCorrect !== true) {
-      setScore((prev) => prev + 1)
-    }
-
-    if (correct) {
-      setFeedback(
-        `Correct — ${currentQuestion.numerator} out of ${currentQuestion.denominator} slices means ${currentQuestion.numerator}/${currentQuestion.denominator}.`
-      )
-    } else {
-      setFeedback(
-        `Not quite. You selected ${selectedCount} out of ${currentQuestion.denominator} slices.`
-      )
-    }
+    setFeedback(buildFeedback(correct))
     setIsCorrect(correct)
   }
 
@@ -77,19 +137,19 @@ function GamePage() {
 
   const handleReset = () => {
     setSelectedSlices([])
+    setSelectedOptionId(null)
     setFeedback('')
     setIsCorrect(null)
   }
 
   const finalizeCurrentQuestionResult = () => {
-    // attempts state reflects the most recent check; we add 1 here isn't needed
-    // because state was updated via setAttempts already on each check.
     const attemptsCount = attempts
     const result = {
       id: currentQuestion.id,
+      type: questionType,
       prompt: currentQuestion.prompt,
-      targetFraction: `${currentQuestion.numerator}/${currentQuestion.denominator}`,
-      selectedFraction: `${selectedSlices.length}/${currentQuestion.denominator}`,
+      targetFraction: getTargetFraction(),
+      selectedFraction: getSelectedFraction(),
       correct: isCorrect === true,
       attempts: attemptsCount,
       hintUsed,
@@ -143,11 +203,20 @@ function GamePage() {
 
       <p className="page__subtitle">{currentQuestion.prompt}</p>
 
-      <PizzaBoard
-        totalSlices={totalSlices}
-        selectedSlices={selectedSlices}
-        onSliceToggle={handleSliceToggle}
-      />
+      {questionType === 'equivalent' ? (
+        <PizzaOptionGrid
+          options={currentQuestion.options || []}
+          selectedOptionId={selectedOptionId}
+          onOptionSelect={setSelectedOptionId}
+        />
+      ) : (
+        <PizzaBoard
+          totalSlices={currentQuestion.denominator}
+          selectedSlices={selectedSlices}
+          prefilledSlices={prefilledSlices}
+          onSliceToggle={handleSliceToggle}
+        />
+      )}
 
       <p className="attempts" style={{ marginTop: 12 }}>
         Attempts: {attempts}
@@ -206,7 +275,7 @@ function GamePage() {
           className="hint"
           style={{ marginTop: 12, fontStyle: 'italic' }}
         >
-          {hintText}
+          {getHintText()}
         </p>
       )}
 
