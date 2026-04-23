@@ -12,6 +12,11 @@ function PizzaBoard({
   selectedSlices = [],
   prefilledSlices = [],
   onSliceToggle,
+  // When true, the status line below the pizza is hidden. Used for `build`
+  // questions so the `x / denominator` readout doesn't leak the denominator
+  // (which is the whole thing the student is supposed to reason about,
+  // e.g. realising that 0.7 means seven tenths).
+  hideTotal = false,
 }) {
   const isSelected = (index) => selectedSlices.includes(index)
   const isPrefilled = (index) => prefilledSlices.includes(index)
@@ -143,11 +148,13 @@ function PizzaBoard({
         />
       </svg>
 
-      <span className="pizza-board__status" role="status" aria-live="polite">
-        {hasPrefilled
-          ? `Prefilled: ${prefilledSlices.length} · Added: ${selectedSlices.length} / ${totalSlices}`
-          : `Selected: ${selectedSlices.length} / ${totalSlices}`}
-      </span>
+      {!hideTotal && (
+        <span className="pizza-board__status" role="status" aria-live="polite">
+          {hasPrefilled
+            ? `Prefilled: ${prefilledSlices.length} · Added: ${selectedSlices.length} / ${totalSlices}`
+            : `${selectedSlices.length} / ${totalSlices}`}
+        </span>
+      )}
     </div>
   )
 }

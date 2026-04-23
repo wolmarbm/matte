@@ -6,6 +6,7 @@ export const CONCEPT_LABELS = {
   'parts-of-whole': 'Parts of a Whole',
   'equivalent-fractions': 'Equivalent Fractions',
   'compare-fractions': 'Compare Fractions',
+  'add-fractions': 'Add Fractions',
 }
 
 export function getConceptLabel(tag) {
@@ -56,31 +57,51 @@ export function getAverageAccuracy(sessions) {
   return Math.round(sum / count)
 }
 
+// Derive per-question correct/incorrect attempt counts, with a fallback for
+// older sessions that only saved a single `attempts` number.
+function getAttemptCounts(q) {
+  if (!q || typeof q !== 'object') {
+    return { correctAttempts: 0, incorrectAttempts: 0 }
+  }
+  const gotCorrect = q.correct === true
+  const hasExplicit =
+    Number.isFinite(Number(q.correctAttempts)) ||
+    Number.isFinite(Number(q.incorrectAttempts))
+
+  if (hasExplicit) {
+    const correctAttempts = Math.max(0, Number(q.correctAttempts) || 0)
+    const incorrectAttempts = Math.max(0, Number(q.incorrectAttempts) || 0)
+    return { correctAttempts, incorrectAttempts }
+  }
+
+  const totalAttempts = Math.max(0, Number(q.attempts) || 0)
+  const correctAttempts = gotCorrect ? 1 : 0
+  const incorrectAttempts = Math.max(0, totalAttempts - correctAttempts)
+  return { correctAttempts, incorrectAttempts }
+}
+
 export function getConceptBreakdown(sessions) {
   const questions = getAllQuestions(sessions)
   const byTag = new Map()
   for (const q of questions) {
     const tag = q.conceptTag || 'unknown'
     if (!byTag.has(tag)) {
-      byTag.set(tag, { conceptTag: tag, total: 0, correct: 0, incorrect: 0 })
+      byTag.set(tag, { conceptTag: tag, correct: 0, incorrect: 0 })
     }
     const entry = byTag.get(tag)
-    entry.total += 1
-    if (q.correct) {
-      entry.correct += 1
-    } else {
-      entry.incorrect += 1
-    }
+    const { correctAttempts, incorrectAttempts } = getAttemptCounts(q)
+    entry.correct += correctAttempts
+    entry.incorrect += incorrectAttempts
   }
 
   const rows = []
   for (const entry of byTag.values()) {
-    const accuracy =
-      entry.total > 0 ? Math.round((entry.correct / entry.total) * 100) : 0
+    const total = entry.correct + entry.incorrect
+    const accuracy = total > 0 ? Math.round((entry.correct / total) * 100) : 0
     rows.push({
       conceptTag: entry.conceptTag,
       label: getConceptLabel(entry.conceptTag),
-      total: entry.total,
+      total,
       correct: entry.correct,
       incorrect: entry.incorrect,
       accuracy,

@@ -109,8 +109,10 @@ function ResultsPage() {
                   Your answer: <strong>{q.selectedFraction}</strong>
                 </p>
                 <p className="question-card__meta">
-                  Attempts: {q.attempts} · Hint used:{' '}
-                  {q.hintUsed ? 'Yes' : 'No'}
+                  Attempts: {q.attempts ?? 0} · Incorrect:{' '}
+                  {q.incorrectAttempts ??
+                    Math.max(0, (q.attempts ?? 0) - (q.correct ? 1 : 0))}{' '}
+                  · Hint used: {q.hintUsed ? 'Yes' : 'No'}
                 </p>
               </li>
             ))}

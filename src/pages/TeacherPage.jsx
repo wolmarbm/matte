@@ -19,6 +19,8 @@ const MISCONCEPTION_HINTS = {
   'parts-of-whole': 'Needs support with numerator/denominator meaning.',
   'equivalent-fractions': 'Missed equivalent fraction relationship.',
   'compare-fractions': 'Needs practice comparing fraction sizes.',
+  'add-fractions':
+    'Needs practice adding fractions with the same denominator (add numerators, keep denominator).',
 }
 
 function formatPlayedAt(iso) {
@@ -154,12 +156,16 @@ function TeacherPage() {
           title="Concept Breakdown"
           ariaLabel="Concept breakdown"
         >
+          <p className="concept-table__caption">
+            Counts reflect every attempt students made on questions in each
+            concept. Accuracy = correct attempts ÷ total attempts.
+          </p>
           <table className="concept-table">
             <thead>
               <tr>
                 <th>Concept</th>
-                <th className="num">Correct</th>
-                <th className="num">Incorrect</th>
+                <th className="num">Correct attempts</th>
+                <th className="num">Incorrect attempts</th>
                 <th className="num">Accuracy</th>
               </tr>
             </thead>
@@ -315,8 +321,13 @@ function TeacherPage() {
                                   <strong>{q.selectedFraction ?? '—'}</strong>
                                 </p>
                                 <p className="question-card__meta">
-                                  Attempts: {q.attempts ?? 0} · Hint used:{' '}
-                                  {q.hintUsed ? 'Yes' : 'No'}
+                                  Attempts: {q.attempts ?? 0} · Incorrect:{' '}
+                                  {q.incorrectAttempts ??
+                                    Math.max(
+                                      0,
+                                      (q.attempts ?? 0) - (q.correct ? 1 : 0),
+                                    )}{' '}
+                                  · Hint used: {q.hintUsed ? 'Yes' : 'No'}
                                 </p>
                                 {misconception ? (
                                   <p className="question-card__misconception">
