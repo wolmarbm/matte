@@ -102,3 +102,60 @@
 .btn--secondary:hover {
   background: #eff6ff;
 }
+
+.pizza-board {
+  margin: 16px auto 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.pizza-board__slices {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 260px;
+}
+
+.slice {
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 600;
+  border: 2px solid #d4a373;
+  background: #fff8ec;
+  color: #8a5a2b;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    transform 0.05s ease;
+  font-family: inherit;
+}
+
+.slice:hover {
+  background: #fdecc8;
+}
+
+.slice:active {
+  transform: scale(0.98);
+}
+
+.slice--selected {
+  background: #e76f51;
+  border-color: #b5563d;
+  color: #fff;
+}
+
+.slice--selected:hover {
+  background: #d85f42;
+}
+
+.pizza-board__status {
+  margin: 4px 0 0;
+  color: #444;
+  font-weight: 500;
+}
