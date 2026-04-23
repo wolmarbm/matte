@@ -1,12 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { loadStudentName, saveStudentName } from '../utils/storage'
 
 function HomePage() {
   const [studentName, setStudentName] = useState('')
   const navigate = useNavigate()
 
+  useEffect(() => {
+    const saved = loadStudentName()
+    if (saved) setStudentName(saved)
+  }, [])
+
   const handleStart = () => {
-    navigate('/play')
+    const trimmed = studentName.trim()
+    const nameToUse = trimmed || 'Student'
+    saveStudentName(trimmed)
+    navigate('/play', { state: { studentName: nameToUse } })
   }
 
   return (
